@@ -11,13 +11,13 @@ Protocol
 Register a nick name (success):
 ```
 --> /nick <nickname>
-<-- success
+<-- nick:success
 ```
 
 Register a nick name (failed):
 ```
 --> /nick <nickname>
-<-- failed:<reason>
+<-- nick:failed:<reason>
 ```
 
 Note: nick name only allow charset [_A-Za-z0-9]
