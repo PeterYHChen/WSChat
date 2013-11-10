@@ -7,16 +7,17 @@ Group Member: Wenxuan Zhao, Yonghong Chen, Guangle Shi
 
 Protocol
 --------
-```
-nick::<NickName>
-text::<Broadcast Message>
-text:<Target NickName>:<Private Message>
-bin::<Broadcast Message>
-bin:<Target NickName>:<Private Message>
 
-nick:success
-nick:fail
-
-text:<Source Nickname>:<Message>
-bin:<Source Nickname>:<Message>
+Register a nick name (success):
 ```
+--> /nick <nickname>
+<-- success
+```
+
+Register a nick name (failed):
+```
+--> /nick <nickname>
+<-- failed:<reason>
+```
+
+Note: nick name only allow charset [_A-Za-z0-9]
