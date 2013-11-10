@@ -19,6 +19,7 @@ public:
 
 signals:
     void requestReconnect();
+    void sendUserName(QString name);
 
 private slots:
     void on_loginButton_clicked();
@@ -26,8 +27,6 @@ private slots:
 
 private:
     Ui::Login *ui;
-
-    QString password;
 
 };
 

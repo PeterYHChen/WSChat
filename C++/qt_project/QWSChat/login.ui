@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>260</height>
+    <height>127</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,8 +16,8 @@
   <widget class="QLabel" name="socketStateLabel">
    <property name="geometry">
     <rect>
-     <x>30</x>
-     <y>180</y>
+     <x>40</x>
+     <y>60</y>
      <width>341</width>
      <height>16</height>
     </rect>
@@ -30,9 +30,9 @@
    <property name="geometry">
     <rect>
      <x>220</x>
-     <y>210</y>
+     <y>90</y>
      <width>168</width>
-     <height>41</height>
+     <height>31</height>
     </rect>
    </property>
    <layout class="QHBoxLayout" name="horizontalLayout_3">
@@ -55,40 +55,22 @@
   <widget class="QWidget" name="layoutWidget">
    <property name="geometry">
     <rect>
-     <x>42</x>
-     <y>52</y>
+     <x>40</x>
+     <y>20</y>
      <width>301</width>
-     <height>101</height>
+     <height>31</height>
     </rect>
    </property>
-   <layout class="QVBoxLayout" name="verticalLayout">
+   <layout class="QHBoxLayout" name="horizontalLayout">
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout">
-      <item>
-       <widget class="QLabel" name="usrLabel">
-        <property name="text">
-         <string>username: </string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="usrLineEdit"/>
-      </item>
-     </layout>
+     <widget class="QLabel" name="usrLabel">
+      <property name="text">
+       <string>username: </string>
+      </property>
+     </widget>
     </item>
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_2">
-      <item>
-       <widget class="QLabel" name="pwdLabel">
-        <property name="text">
-         <string>password: </string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="pwdLineEdit"/>
-      </item>
-     </layout>
+     <widget class="QLineEdit" name="usrLineEdit"/>
     </item>
    </layout>
   </widget>

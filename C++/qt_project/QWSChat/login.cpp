@@ -6,7 +6,6 @@ Login::Login(QWidget *parent) :
     ui(new Ui::Login)
 {
     ui->setupUi(this);
-    ui->pwdLineEdit->setEchoMode(QLineEdit::Password);
 }
 
 Login::~Login()
@@ -23,16 +22,10 @@ void Login::on_loginButton_clicked()
     }
 
     userName = ui->usrLineEdit->text();
-    password = ui->pwdLineEdit->text();
-
-    if(userName == "yychan" && password == "gaojingwen")
-        accept();
+    if(userName != "")
+        sendUserName(userName);
     else
-    {
-        QMessageBox::warning(this, tr("warning"), tr("username or password is wrong"), QMessageBox::Yes);
-        ui->pwdLineEdit->clear();
-        ui->pwdLineEdit->setFocus();
-    }
+         QMessageBox::warning(this, tr("Oops~"), tr("\n userName is empty"),QMessageBox::Yes);
 }
 
 void Login::setLabel(QString text)

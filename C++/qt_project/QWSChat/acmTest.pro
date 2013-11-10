@@ -7,7 +7,7 @@
 QT       += core gui
 QT       += network
 
-TARGET = acmTest
+TARGET = QWSChat
 TEMPLATE = app
 
 
@@ -18,10 +18,10 @@ SOURCES += main.cpp\
     QWsHandshake.cpp \
     QWsServer.cpp \
     QWsSocket.cpp \
-    acmtest.cpp \
-    login.cpp
+    login.cpp \
+    QWSChat.cpp
 
-HEADERS  += acmtest.h \
+HEADERS  += \
     functions.h \
     QTlsServer.h \
     QWsFrame.h \
@@ -29,7 +29,9 @@ HEADERS  += acmtest.h \
     QWsServer.h \
     QWsSocket.h \
     WsEnums.h \
-    login.h
+    login.h \
+    QWSChat.h
 
-FORMS    += acmtest.ui \
-    login.ui
+FORMS    += \
+    login.ui \
+    QWSChat.ui
