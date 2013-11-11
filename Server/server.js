@@ -19,8 +19,47 @@ wsServer = new WebSocketServer({httpServer: server});
 /* Websocket Server Implementation */
 var WSChat = {};
 WSChat.connections = [];
-WSChat.doBroadCast = function (conn, cmd, params) {
-  // TODO
+WSChat.checkNotLogin = function (conn) {
+  if (!conn.nickName) {
+    conn.sendUTF("error:Not login!");
+    return true;
+  }
+
+  return false;
+}
+WSChat.checkEmptyMessage = function (conn, message) {
+  if (message)
+    return false;
+
+  conn.sendUTF("error:Empty message!");
+  return true;
+}
+WSChat.doSend = function (conn, dest, message) {
+  if (WSChat.checkNotLogin(conn) || WSChat.checkEmptyMessage(conn, message))
+    return;
+
+  var found = false;
+  for (var c in WSChat.connections) {
+    if (WSChat.connections[c].nickName == dest) {
+      WSChat.connections[c].sendUTF("pmsg:" + conn.nickName + ":" + message);
+      found = true;
+      break;
+    }
+  }
+
+  if (found) {
+    conn.sendUTF("pmsg:" + conn.nickName + ":" + message);
+  } else {
+    conn.sendUTF("pmsg:failed:User not exist!");
+  }
+}
+WSChat.doBroadCast = function (conn, message) {
+  if (WSChat.checkNotLogin(conn) || WSChat.checkEmptyMessage(conn, message))
+    return;
+  for (var c in WSChat.connections) {
+    if (WSChat.connections[c].nickName)
+      WSChat.connections[c].sendUTF("msg:" + conn.nickName + ":" + message);
+  }
 }
 WSChat.cmdList = function (conn) {
   var list = "";
@@ -58,31 +97,45 @@ WSChat.cmdNick = function (conn, nick) {
     conn.sendUTF("nick:fail:Empty nickname!");
 }
 WSChat.processCommand = function (conn, cmd, params) {
-  switch (cmd) {
+  switch (cmd.trim()) {
     case "list":
       WSChat.cmdList(conn);
       break;
 
     case "nick":
-      WSChat.cmdNick(conn, params);
+      WSChat.cmdNick(conn, params.trim());
       break;
       
     case "to":
-      // TODO
+      var dest = params;
+      var message = "";
+
+      var pos = params.indexOf(' ');
+      if (pos != -1) {
+        dest = params.substring(0, pos);
+        message = params.substring(pos + 1);
+      }
+
+      WSChat.doSend(conn, dest, message);
       break;
       
     default:
+      // escape
+      if (cmd.charAt(0) == '/') {
+        WSChat.doBroadCast(conn, cmd + params == "" ? "" : ' ' + params);
+        break;
+      }
       conn.sendUTF("error:Command \"" + cmd + "\" not found!");
   }
 }
 WSChat.processTextMessage = function (conn, message) {
-  if (message.charAt(0) == "/") {
+  if (message.charAt(0) == '/') {
     // command mode, parse cmd and param
-    message = message.trim();
+    message = message;
     var cmd = message;
     var params = "";
 
-    var pos = message.indexOf(" ");
+    var pos = message.indexOf(' ');
     if (pos != -1) {
       cmd = message.substring(0, pos);
       params = message.substring(pos + 1);
@@ -131,9 +184,5 @@ wsServer.on("request", function (request) {
 
 /*
         // boardcast mode
-        for (var c in connections) {
-          if (c.nickName)
-            c.sendUTF("msg:" + conn.nickName + ":" + data);
-        }
 */
 });
