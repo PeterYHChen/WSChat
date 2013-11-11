@@ -143,6 +143,7 @@ void QWSChat::checkMessage(QString msg)
             login->accept();
         else
         {
+            msg = msg.remove(0,10);
             QMessageBox::warning(login, tr("Oops~"), msg, QMessageBox::Yes);
         }
     }
