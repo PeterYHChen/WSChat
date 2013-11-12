@@ -8,6 +8,7 @@
 #include <QTextStream>
 #include "login.h"
 #include "QWsSocket.h"
+
 namespace Ui {
 class acmTest;
 }
@@ -26,6 +27,9 @@ private slots:
     void displayMessage(QString s);
     void setLoginSocketLabel();
     void reconnectSocket();
+    void sendUserName(QString);
+    void checkMessage(QString);
+    void checkSocketState();
 private:
     Ui::acmTest *ui;
     QtWebsocket::QWsSocket* websocket;
@@ -34,6 +38,8 @@ private:
     Login* login;
     QTimer* timer;
     QString currentSocketState(QAbstractSocket::SocketState socketState);
+    int flag;
+    int loginSuccess;
 
 };
 

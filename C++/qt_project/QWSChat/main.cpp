@@ -1,5 +1,5 @@
 #include <QtGui/QApplication>
-#include "acmtest.h"
+#include "QWSChat.h"
 
 
 int main(int argc, char *argv[])
