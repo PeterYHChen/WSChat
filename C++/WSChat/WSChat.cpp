@@ -34,7 +34,6 @@ bool WSChat::loginSucceed()
 {
     if(login->exec() == QDialog::Accepted)
         loginSuccess = 1;
-
     return loginSuccess;
 }
 
@@ -79,13 +78,13 @@ void WSChat::initiateLoginDlg()
     QObject::connect(login,SIGNAL(sendUserName(QString)),this, SLOT(sendUserName(QString)));
     QObject::connect(login,SIGNAL(requestReconnect()),this, SLOT(reconnectSocket()));
     QObject::connect(this,SIGNAL(setDlgSocketState(QString)),login, SLOT(setDlgSocketState(QString)));
+
     //can not close the process when close the login dialog
     setDlgSocketState(currentSocketState(websocket->state()));
 
     login->show();
 
 }
-
 
 QString WSChat::currentSocketState(QAbstractSocket::SocketState state)
 {
@@ -154,7 +153,6 @@ void WSChat::on_enterButton_clicked()
             ui->textEdit->clear();
             ui->textEdit->setFocus();
             websocket->write(text);
-            //login->msgWarning(text);
         }
     }
 }
@@ -172,7 +170,6 @@ void WSChat::checkSocketState()
         {
             if(flag != 1)
             {
-                ui->infoLabel->setText(tr("Yeah~ Socket is connected!"));
                 flag = 1;
                 sendUserName(login->getUserName());
             }
@@ -182,7 +179,8 @@ void WSChat::checkSocketState()
             if(flag == 1)
             {
                 flag = 0;
-                ui->infoLabel->setText(tr("socket is unconnected, please wait or reopen the window"));
+                QMessageBox::warning(this,tr(""),tr("socket is unconnected, please wait until it is connected"),
+                                     QMessageBox::Yes);
             }
             reconnectSocket();
         }
@@ -218,7 +216,7 @@ void WSChat::checkMessage(QString msg)
     else
     {
         if(msg == "nick:success")
-            ui->infoLabel->setText(tr("\tlogin success!"));
+            ui->infoLabel->setText(tr("Yeah~ Socket is connected!\tlogin success!"));
         else
             displayMessage(msg.toHtmlEscaped());
     }

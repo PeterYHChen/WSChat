@@ -7,7 +7,7 @@ int main(int argc, char *argv[])
 
     WSChat w;
 
-    if(w.loginSucceed())
+    if (w.loginSucceed())
         w.show();
 
     return a.exec();

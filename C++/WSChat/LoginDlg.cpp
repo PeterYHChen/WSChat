@@ -12,6 +12,7 @@ LoginDlg::LoginDlg(QWidget *parent) :
 
 LoginDlg::~LoginDlg()
 {
+
     delete ui;
 }
 
@@ -65,3 +66,4 @@ void LoginDlg::msgWarning(QString warningMsg)
 {
     QMessageBox::warning(this, tr("Oops~"), warningMsg, QMessageBox::Yes);
 }
+
