@@ -24,6 +24,7 @@ WSChat::WSChat(QWidget *parent) :
 
 WSChat::~WSChat()
 {
+    delete websocket;
     delete timer;
     delete login;
     delete ui;
@@ -53,7 +54,7 @@ void WSChat::initiateWidgets()
 
 void WSChat::initiateWebSocket()
 {
-    ip = "ws://tunnel.vince.im";
+    ip = "ws://localhost";
     port = 8999;
     websocket = new QtWebsocket::QWsSocket(this, NULL, QtWebsocket::WS_V13);
     websocket->connectToHost(ip.toUtf8(), port);
@@ -61,6 +62,7 @@ void WSChat::initiateWebSocket()
 
     //set the socket state of dlg and main window
     socketState = currentSocketState(websocket->state());
+    //QMessageBox::warning(this, tr(""), socketState, QMessageBox::Yes);
     ui->infoLabel->setText(socketState);
 
 }
@@ -73,12 +75,14 @@ void WSChat::displayMessage(QString msg)
 void WSChat::initiateLoginDlg()
 {
     login = new LoginDlg(this);
-    setDlgSocketState(currentSocketState(websocket->state()));
-    login->show();
 
     QObject::connect(login,SIGNAL(sendUserName(QString)),this, SLOT(sendUserName(QString)));
     QObject::connect(login,SIGNAL(requestReconnect()),this, SLOT(reconnectSocket()));
     QObject::connect(this,SIGNAL(setDlgSocketState(QString)),login, SLOT(setDlgSocketState(QString)));
+    //can not close the process when close the login dialog
+    setDlgSocketState(currentSocketState(websocket->state()));
+
+    login->show();
 
 }
 
@@ -149,7 +153,8 @@ void WSChat::on_enterButton_clicked()
         {
             ui->textEdit->clear();
             ui->textEdit->setFocus();
-            websocket->write(text.toHtmlEscaped());
+            websocket->write(text);
+            //login->msgWarning(text);
         }
     }
 }
@@ -158,7 +163,7 @@ void WSChat::checkSocketState()
 {
     socketState = currentSocketState(websocket->state());
     ui->infoLabel->setText(socketState);
-
+    //login->msgWarning("hhh");
     if(!loginSuccess)
         setDlgSocketState(socketState);
     else

@@ -27,11 +27,11 @@ class Ui_LoginDlg
 {
 public:
     QLabel *socketStateLabel;
-    QWidget *widget;
+    QWidget *layoutWidget;
     QHBoxLayout *horizontalLayout;
     QLabel *label;
     QLineEdit *nameInputLineEdit;
-    QWidget *widget1;
+    QWidget *layoutWidget1;
     QHBoxLayout *horizontalLayout_2;
     QPushButton *loginButton;
     QPushButton *connectButton;
@@ -49,13 +49,13 @@ public:
         socketStateLabel = new QLabel(LoginDlg);
         socketStateLabel->setObjectName(QStringLiteral("socketStateLabel"));
         socketStateLabel->setGeometry(QRect(10, 60, 331, 16));
-        widget = new QWidget(LoginDlg);
-        widget->setObjectName(QStringLiteral("widget"));
-        widget->setGeometry(QRect(10, 20, 329, 31));
-        horizontalLayout = new QHBoxLayout(widget);
+        layoutWidget = new QWidget(LoginDlg);
+        layoutWidget->setObjectName(QStringLiteral("layoutWidget"));
+        layoutWidget->setGeometry(QRect(10, 20, 329, 31));
+        horizontalLayout = new QHBoxLayout(layoutWidget);
         horizontalLayout->setObjectName(QStringLiteral("horizontalLayout"));
         horizontalLayout->setContentsMargins(0, 0, 0, 0);
-        label = new QLabel(widget);
+        label = new QLabel(layoutWidget);
         label->setObjectName(QStringLiteral("label"));
         QFont font;
         font.setPointSize(11);
@@ -63,7 +63,7 @@ public:
 
         horizontalLayout->addWidget(label);
 
-        nameInputLineEdit = new QLineEdit(widget);
+        nameInputLineEdit = new QLineEdit(layoutWidget);
         nameInputLineEdit->setObjectName(QStringLiteral("nameInputLineEdit"));
         QSizePolicy sizePolicy1(QSizePolicy::Expanding, QSizePolicy::Expanding);
         sizePolicy1.setHorizontalStretch(0);
@@ -73,13 +73,13 @@ public:
 
         horizontalLayout->addWidget(nameInputLineEdit);
 
-        widget1 = new QWidget(LoginDlg);
-        widget1->setObjectName(QStringLiteral("widget1"));
-        widget1->setGeometry(QRect(207, 90, 181, 31));
-        horizontalLayout_2 = new QHBoxLayout(widget1);
+        layoutWidget1 = new QWidget(LoginDlg);
+        layoutWidget1->setObjectName(QStringLiteral("layoutWidget1"));
+        layoutWidget1->setGeometry(QRect(207, 90, 181, 31));
+        horizontalLayout_2 = new QHBoxLayout(layoutWidget1);
         horizontalLayout_2->setObjectName(QStringLiteral("horizontalLayout_2"));
         horizontalLayout_2->setContentsMargins(0, 0, 0, 0);
-        loginButton = new QPushButton(widget1);
+        loginButton = new QPushButton(layoutWidget1);
         loginButton->setObjectName(QStringLiteral("loginButton"));
         QSizePolicy sizePolicy2(QSizePolicy::Minimum, QSizePolicy::Expanding);
         sizePolicy2.setHorizontalStretch(0);
@@ -90,7 +90,7 @@ public:
 
         horizontalLayout_2->addWidget(loginButton);
 
-        connectButton = new QPushButton(widget1);
+        connectButton = new QPushButton(layoutWidget1);
         connectButton->setObjectName(QStringLiteral("connectButton"));
         sizePolicy2.setHeightForWidth(connectButton->sizePolicy().hasHeightForWidth());
         connectButton->setSizePolicy(sizePolicy2);
@@ -107,7 +107,7 @@ public:
     void retranslateUi(QDialog *LoginDlg)
     {
         LoginDlg->setWindowTitle(QApplication::translate("LoginDlg", "Dialog", 0));
-        socketStateLabel->setText(QApplication::translate("LoginDlg", "TextLabel", 0));
+        socketStateLabel->setText(QString());
         label->setText(QApplication::translate("LoginDlg", "username:", 0));
         loginButton->setText(QApplication::translate("LoginDlg", "login", 0));
         connectButton->setText(QApplication::translate("LoginDlg", "connect", 0));

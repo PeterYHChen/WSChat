@@ -98,7 +98,7 @@ public:
     {
         WSChat->setWindowTitle(QApplication::translate("WSChat", "WSChat", 0));
         enterButton->setText(QApplication::translate("WSChat", "Enter", 0));
-        infoLabel->setText(QApplication::translate("WSChat", "hello", 0));
+        infoLabel->setText(QString());
     } // retranslateUi
 
 };
