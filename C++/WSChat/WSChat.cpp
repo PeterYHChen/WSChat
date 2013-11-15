@@ -66,11 +66,6 @@ void WSChat::initiateWebSocket()
 
 }
 
-void WSChat::displayMessage(QString msg)
-{
-    ui->textBrowser->append(msg);
-}
-
 void WSChat::initiateLoginDlg()
 {
     login = new LoginDlg(this);
@@ -84,59 +79,6 @@ void WSChat::initiateLoginDlg()
 
     login->show();
 
-}
-
-QString WSChat::currentSocketState(QAbstractSocket::SocketState state)
-{
-    switch (state)
-    {
-        case QAbstractSocket::UnconnectedState:
-            return tr("Unconnected");
-
-        case QAbstractSocket::HostLookupState:
-            return tr("HostLookup");
-
-        case QAbstractSocket::ConnectingState:
-            return tr("Connecting");
-
-        case QAbstractSocket::ConnectedState:
-            return tr("Connected");
-
-        case QAbstractSocket::BoundState:
-            return tr("Bound");
-
-        case QAbstractSocket::ClosingState:
-            return tr("Closing");
-
-        case QAbstractSocket::ListeningState:
-            return tr("Listening");
-
-        default:
-            return tr("Unknown");
-    }
-}
-
-void WSChat::resizeEvent(QResizeEvent *e)
-{
-    //the width between widgets
-    int w = 5;
-
-    // get size of the window
-    QSize mainSize(WSChat::size());
-
-    //resize all the widgets according to the window size
-    ui->textEdit->resize(mainSize.width() - ui->enterButton->width() - 3 * w, 110);
-    ui->textEdit->move(w, mainSize.height() - (ui->textEdit->height() + ui->infoLabel->height() + 2 * w));
-
-    ui->enterButton->move(mainSize.width() - w - ui->enterButton->width(),
-                          mainSize.height() - (ui->enterButton->height() + ui->infoLabel->height() + 2 * w));
-
-    ui->infoLabel->resize(ui->textEdit->size().width(), 16);
-    ui->infoLabel->move(w, mainSize.height() - ui->infoLabel->height() - w - 2);
-
-    ui->textBrowser->resize(mainSize.width() - 2 * w,
-                            mainSize.height() - ui->textEdit->size().height() - ui->infoLabel->size().height() - 4 * w);
-    ui->textBrowser->move(w, w);
 }
 
 void WSChat::on_enterButton_clicked()
@@ -221,3 +163,64 @@ void WSChat::checkMessage(QString msg)
             displayMessage(msg.toHtmlEscaped());
     }
 }
+
+void WSChat::displayMessage(QString msg)
+{
+    ui->textBrowser->append(msg);
+}
+
+
+QString WSChat::currentSocketState(QAbstractSocket::SocketState state)
+{
+    switch (state)
+    {
+        case QAbstractSocket::UnconnectedState:
+            return tr("Unconnected");
+
+        case QAbstractSocket::HostLookupState:
+            return tr("HostLookup");
+
+        case QAbstractSocket::ConnectingState:
+            return tr("Connecting");
+
+        case QAbstractSocket::ConnectedState:
+            return tr("Connected");
+
+        case QAbstractSocket::BoundState:
+            return tr("Bound");
+
+        case QAbstractSocket::ClosingState:
+            return tr("Closing");
+
+        case QAbstractSocket::ListeningState:
+            return tr("Listening");
+
+        default:
+            return tr("Unknown");
+    }
+}
+
+void WSChat::resizeEvent(QResizeEvent *e)
+{
+
+    //the width between widgets
+    int w = 5;
+
+    // get size of the window
+    QSize mainSize(WSChat::size());
+
+    //resize all the widgets according to the window size
+    ui->textEdit->resize(mainSize.width() - ui->enterButton->width() - 3 * w, 110);
+    ui->textEdit->move(w, mainSize.height() - (ui->textEdit->height() + ui->infoLabel->height() + 2 * w));
+
+    ui->enterButton->move(mainSize.width() - w - ui->enterButton->width(),
+                          mainSize.height() - (ui->enterButton->height() + ui->infoLabel->height() + 2 * w));
+
+    ui->infoLabel->resize(ui->textEdit->size().width(), 16);
+    ui->infoLabel->move(w, mainSize.height() - ui->infoLabel->height() - w - 2);
+
+    ui->textBrowser->resize(mainSize.width() - 2 * w,
+                            mainSize.height() - ui->textEdit->size().height() - ui->infoLabel->size().height() - 4 * w);
+    ui->textBrowser->move(w, w);
+}
+
