@@ -44,11 +44,15 @@ void WSChat::initiateWidgets()
 
     //set the fixed size for each widgets if necessary
     ui->textEdit->setFixedHeight(110);
-    ui->enterButton->setFixedSize(50, ui->textEdit->size().height());
+    ui->nameListView->setFixedWidth(70);
+    ui->enterButton->setFixedSize(ui->nameListView->width(), ui->textEdit->height());
     ui->infoLabel->setFixedHeight(16);
+
 
     ui->textEdit->setFocus();
     ui->enterButton->setShortcut(QKeySequence(Qt::CTRL+Qt::Key_I));
+
+    QObject::connect(ui->nameListView,SIGNAL(clicked(QModelIndex)),this, SLOT(readyForPMsg(QModelIndex)));
 }
 
 void WSChat::initiateWebSocket()
@@ -160,7 +164,11 @@ void WSChat::checkMessage(QString msg)
         if(msg == "nick:success")
             ui->infoLabel->setText(tr("Yeah~ Socket is connected!\tlogin success!"));
         else
+        {
+            if(msg.startsWith(tr("list")))
+                checkNameList(msg);
             displayMessage(msg.toHtmlEscaped());
+        }
     }
 }
 
@@ -169,6 +177,25 @@ void WSChat::displayMessage(QString msg)
     ui->textBrowser->append(msg);
 }
 
+
+void WSChat::checkNameList(QString names)
+{
+    //remove "list"
+    names = names.remove(0,4);
+    nameList = names.split(':', QString::SkipEmptyParts);
+    nameList.removeAll(login->getUserName());
+    stringListModel.setStringList(nameList);
+    ui->nameListView->setModel(&stringListModel);
+}
+
+void WSChat::readyForPMsg(QModelIndex index)
+{
+    index = ui->nameListView->currentIndex();
+
+    ui->textEdit->setText(tr("/to ") + nameList.at(index.row()) + tr(" \n"));
+    ui->textEdit->setFocus();
+
+}
 
 QString WSChat::currentSocketState(QAbstractSocket::SocketState state)
 {
@@ -216,11 +243,15 @@ void WSChat::resizeEvent(QResizeEvent *e)
     ui->enterButton->move(mainSize.width() - w - ui->enterButton->width(),
                           mainSize.height() - (ui->enterButton->height() + ui->infoLabel->height() + 2 * w));
 
+    ui->nameListView->resize(ui->enterButton->width(),
+                             mainSize.height() - ui->enterButton->height() - ui->infoLabel->height() - 4 * w);
+    ui->nameListView->move(mainSize.width() - w - ui->nameListView->width(), w);
+
     ui->infoLabel->resize(ui->textEdit->size().width(), 16);
     ui->infoLabel->move(w, mainSize.height() - ui->infoLabel->height() - w - 2);
 
-    ui->textBrowser->resize(mainSize.width() - 2 * w,
-                            mainSize.height() - ui->textEdit->size().height() - ui->infoLabel->size().height() - 4 * w);
+    ui->textBrowser->resize(mainSize.width() - ui->nameListView->width() - 3 * w,
+                            mainSize.height() - ui->textEdit->height() - ui->infoLabel->height() - 4 * w);
     ui->textBrowser->move(w, w);
 }
 

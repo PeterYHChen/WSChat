@@ -42,12 +42,19 @@ void LoginDlg::on_loginButton_clicked()
         msgWarning(tr("Empty username"));
         return;
     }
+    else if(userName.length() > 10)
+    {
+        msgWarning(tr("username should not be over 10 characters"));
+        return;
+    }
+
     sendUserName(userName);
 }
 
 
 void LoginDlg::on_connectButton_clicked()
 {
+    ui->nameInputLineEdit->setFocus();
 
     if(socketState == tr("Connecting"))
         msgWarning(tr("Be Patient"));
@@ -65,5 +72,6 @@ void LoginDlg::on_connectButton_clicked()
 void LoginDlg::msgWarning(QString warningMsg)
 {
     QMessageBox::warning(this, tr("Oops~"), warningMsg, QMessageBox::Yes);
+    ui->nameInputLineEdit->setFocus();
 }
 

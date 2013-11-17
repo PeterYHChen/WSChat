@@ -29,8 +29,8 @@
    <widget class="QTextBrowser" name="textBrowser">
     <property name="geometry">
      <rect>
-      <x>10</x>
-      <y>10</y>
+      <x>20</x>
+      <y>80</y>
       <width>281</width>
       <height>91</height>
      </rect>
@@ -48,8 +48,8 @@
    <widget class="QTextEdit" name="textEdit">
     <property name="geometry">
      <rect>
-      <x>10</x>
-      <y>110</y>
+      <x>60</x>
+      <y>260</y>
       <width>221</width>
       <height>111</height>
      </rect>
@@ -79,8 +79,8 @@
     </property>
     <property name="geometry">
      <rect>
-      <x>240</x>
-      <y>110</y>
+      <x>500</x>
+      <y>260</y>
       <width>50</width>
       <height>115</height>
      </rect>
@@ -124,6 +124,16 @@
     </property>
     <property name="text">
      <string/>
+    </property>
+   </widget>
+   <widget class="QListView" name="nameListView">
+    <property name="geometry">
+     <rect>
+      <x>320</x>
+      <y>30</y>
+      <width>256</width>
+      <height>192</height>
+     </rect>
     </property>
    </widget>
   </widget>

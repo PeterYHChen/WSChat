@@ -4,6 +4,8 @@
 #include <QMainWindow>
 #include "LoginDlg.h"
 #include "QWebSocket_files/QWsSocket.h"
+#include <QStringListModel>
+#include <QModelIndex>
 
 namespace Ui {
 class WSChat;
@@ -27,6 +29,10 @@ private:
     QString socketState;
     QtWebsocket::QWsSocket* websocket;
     QTimer* timer;
+
+    QStringListModel stringListModel;
+    QStringList nameList;
+
     int flag;
     int loginSuccess;
 
@@ -48,6 +54,8 @@ private slots:
     void reconnectSocket();
     void sendUserName(QString);
     void checkMessage(QString);
+    void checkNameList(QString);
+    void readyForPMsg(QModelIndex);
 };
 
 #endif // WSCHAT_H
