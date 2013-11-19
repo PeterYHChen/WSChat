@@ -57,7 +57,7 @@ void WSChat::initiateWidgets()
 
 void WSChat::initiateWebSocket()
 {
-    ip = "ws://localhost";
+    ip = "ws://LocalHost";
     port = 8999;
     websocket = new QtWebsocket::QWsSocket(this, NULL, QtWebsocket::WS_V13);
     websocket->connectToHost(ip.toUtf8(), port);
@@ -174,7 +174,13 @@ void WSChat::checkMessage(QString msg)
 
 void WSChat::displayMessage(QString msg)
 {
-    ui->textBrowser->append(msg);
+    QStringList m = msg.split(":");
+    ui->textBrowser->append(m[1] + tr(":"));
+    QString temp;
+    for(int i = 2; i < m.length() - 1; i++)
+        temp += m[i] + tr(":");
+    temp += m.last();
+    ui->textBrowser->append(temp);
 }
 
 
