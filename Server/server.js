@@ -53,13 +53,16 @@ WSChat.doSend = function (conn, dest, message) {
     conn.sendUTF("pmsg:failed:User not exist!");
   }
 }
-WSChat.doBroadCast = function (conn, message) {
+WSChat.doBroadCast = function (message, includeNotLogin) {
+  for (var c in WSChat.connections) {
+    if (WSChat.connections[c].nickName || includeNotLogin)
+      WSChat.connections[c].sendUTF(message);
+  }
+}
+WSChat.doBroadCastMsg = function (conn, message) {
   if (WSChat.checkNotLogin(conn) || WSChat.checkEmptyMessage(conn, message))
     return;
-  for (var c in WSChat.connections) {
-    if (WSChat.connections[c].nickName)
-      WSChat.connections[c].sendUTF("msg:" + conn.nickName + ":" + message);
-  }
+  WSChat.doBroadCast("msg:" + conn.nickName + ":" + message, false);
 }
 WSChat.cmdList = function (conn) {
   var list = "";
@@ -87,6 +90,7 @@ WSChat.cmdNick = function (conn, nick) {
       } else {
         conn.nickName = nick;
         conn.sendUTF("nick:success");
+        WSChat.doBroadCast("login:" + nick);
       }
     } else {
       conn.sendUTF("nick:fail:Illegal character \""
@@ -122,7 +126,7 @@ WSChat.processCommand = function (conn, cmd, params) {
     default:
       // escape
       if (cmd.charAt(0) == '/') {
-        WSChat.doBroadCast(conn, cmd + params == "" ? "" : ' ' + params);
+        WSChat.doBroadCastMsg(conn, cmd + params == "" ? "" : ' ' + params);
         break;
       }
       conn.sendUTF("error:Command \"" + cmd + "\" not found!");
@@ -144,7 +148,7 @@ WSChat.processTextMessage = function (conn, message) {
 
     WSChat.processCommand(conn, cmd, params);
   } else
-    WSChat.doBroadCast(conn, message);
+    WSChat.doBroadCastMsg(conn, message);
 }
 WSChat.processBinaryMessage = function (conn, message) {
   console.log("FIXME: Received Binary Message of "
@@ -165,6 +169,8 @@ WSChat.handleMessage = function (conn, message) {
   }
 }
 WSChat.handleClose = function (conn) {
+  if (conn.nickName)
+    WSChat.doBroadCast("logout:" + conn.nickName);
   delete WSChat.connections[WSChat.connections.indexOf(conn)];
 }
 
@@ -181,8 +187,4 @@ wsServer.on("request", function (request) {
   });
 
   WSChat.connections.push(conn);
-
-/*
-        // boardcast mode
-*/
 });
