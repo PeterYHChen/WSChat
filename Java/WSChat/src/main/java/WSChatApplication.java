@@ -1,5 +1,6 @@
 import javax.swing.JFrame;
 import javax.swing.DefaultListModel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.JButton;
@@ -8,7 +9,6 @@ import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Arrays;
 
 import javax.swing.JList;
 import javax.swing.JScrollPane;
@@ -72,6 +72,8 @@ public class WSChatApplication extends WebSocketClient implements Runnable {
 		JScrollPane msg_pane = new JScrollPane();
 		msg_area = new JTextArea();
 		msg_area.setEditable(false);
+		msg_area.setLineWrap(true);
+		msg_area.setWrapStyleWord(true);
 		msg_pane.setViewportView(msg_area);
 		msg_pane.setBounds(10, 45, 450, 450);
 		mainPanel.add(msg_pane);
@@ -94,6 +96,8 @@ public class WSChatApplication extends WebSocketClient implements Runnable {
 
 		JScrollPane in_pane = new JScrollPane();
 		final JTextArea in_area = new JTextArea();
+		in_area.setLineWrap(true);
+		in_area.setWrapStyleWord(true);
 		in_pane.setViewportView(in_area);
 		JButton sendBut = new JButton("Send");
 		sendBut.addActionListener(new ActionListener() {
@@ -137,7 +141,7 @@ public class WSChatApplication extends WebSocketClient implements Runnable {
 			return;
 		} else if (protocol.equals("list")) {
 			String[] namelist = message.split(":");
-			System.out.println(Arrays.toString(namelist));
+			//System.out.println(Arrays.toString(namelist));
 			listModel.clear();
 			listModel.addElement("[Everyone]");
 			int index = 0;
@@ -162,7 +166,11 @@ public class WSChatApplication extends WebSocketClient implements Runnable {
 			msg_area.append("[Private]"
 					+ message.substring(0, message.indexOf(':')) + ":\n"
 					+ message.substring(message.indexOf(':') + 1) + "\n");
-		} else {
+		} else if (message.startsWith("")) {
+			JOptionPane.showMessageDialog(null, "Empty message\n");
+		}
+		else
+		{
 			System.err.println("FIXME: Unhandled protocol [" + protocol
 					+ "] with data [" + message + "]");
 		}
