@@ -8,6 +8,8 @@ import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Arrays;
+
 import javax.swing.JList;
 import javax.swing.JScrollPane;
 import org.java_websocket.client.WebSocketClient;
@@ -24,6 +26,7 @@ public class WSChatApplication extends WebSocketClient implements Runnable {
 	private JList<String> list;
 	private JTextArea msg_area;
 	private String currentTarget = null;
+	private JButton sendName;
 
 	/**
 	 * Create the application.
@@ -55,7 +58,7 @@ public class WSChatApplication extends WebSocketClient implements Runnable {
 		setNameLabel.setBounds(168, 10, 80, 30);
 		nameField = new JTextField();
 		nameField.setBounds(247, 10, 100, 30);
-		JButton sendName = new JButton("Set Name");
+		sendName = new JButton("Set Name");
 		sendName.setBounds(359, 11, 120, 30);
 		nameField.setColumns(10);
 		mainPanel.add(nameField);
@@ -95,7 +98,11 @@ public class WSChatApplication extends WebSocketClient implements Runnable {
 		JButton sendBut = new JButton("Send");
 		sendBut.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				WSChatApplication.this.send(in_area.getText());
+				if (list.getSelectedIndex() == 0)
+					WSChatApplication.this.send(in_area.getText());
+				else
+					WSChatApplication.this.send("/to " + currentTarget + " "
+							+ in_area.getText());
 				in_area.setText("");
 			}
 		});
@@ -111,7 +118,6 @@ public class WSChatApplication extends WebSocketClient implements Runnable {
 
 	@Override
 	public void onOpen(ServerHandshake handshakedata) {
-		this.send("/list");
 		msg_area.append("[Connection Established!]\n");
 	}
 
@@ -121,22 +127,26 @@ public class WSChatApplication extends WebSocketClient implements Runnable {
 		message = message.substring(message.indexOf(':') + 1);
 
 		if (protocol.equals("nick")) {
-			if (message.equals("success"))
+			if (message.equals("success")) {
+				nameField.setEnabled(false);
+				sendName.setVisible(false);
 				msg_area.append("[Set Nickname Successfully!]\n");
-			else
+			} else
 				msg_area.append("[Set Nickname Failed: "
 						+ message.substring(message.indexOf(':') + 1) + "]\n");
 			return;
 		} else if (protocol.equals("list")) {
 			String[] namelist = message.split(":");
+			System.out.println(Arrays.toString(namelist));
 			listModel.clear();
 			listModel.addElement("[Everyone]");
-			list.setSelectedIndex(0);
+			int index = 0;
 			for (int i = 0; i < namelist.length; i++) {
 				listModel.addElement(namelist[i]);
 				if (namelist[i].equals(currentTarget))
-					list.setSelectedIndex(i + 1);
+					index = i + 1;
 			}
+			list.setSelectedIndex(index);
 			return;
 		} else if (protocol.equals("login")) {
 			msg_area.append("[" + message + " just logged in!]\n");
@@ -152,20 +162,27 @@ public class WSChatApplication extends WebSocketClient implements Runnable {
 			msg_area.append("[Private]"
 					+ message.substring(0, message.indexOf(':')) + ":\n"
 					+ message.substring(message.indexOf(':') + 1) + "\n");
+		} else {
+			System.err.println("FIXME: Unhandled protocol [" + protocol
+					+ "] with data [" + message + "]");
 		}
 
 	}
 
 	@Override
 	public void onClose(int code, String reason, boolean remote) {
-		if (reason.equals(null)) {
-			msg_area.append("[Error: Server not available]");
+		if (reason == null) {
+			msg_area.append("[Error: Server not available]\n");
+		} else if (reason.equals("")) {
+			msg_area.append("[Connection lost]\n");
+		} else {
+			msg_area.append("[Connection lost: " + reason + "]\n");
 		}
-		msg_area.append("[Connection lost: " + reason + "]");
 	}
 
 	@Override
 	public void onError(Exception ex) {
-		System.out.println("dbg: error " + ex.toString() + "!");
+		System.out.println("* Fatel Error!");
+		ex.printStackTrace();
 	}
 }
