@@ -401,6 +401,24 @@ parsePayload(char *payload)
             return;
         }
     }
+    else if (strcmp(protocol, "msg") == 0)
+    {
+        /* parse sender's nickname */
+        while (*ps != '\0')
+        {
+            if (*ps == ':')
+            {
+                *ps++ = '\0';
+                 break;
+            }
+
+            ps++;
+        }
+        snprintf(outputBuf, OUTPUT_BUF_SIZE, "%s: %s",
+            message, ps);
+        output(outputBuf);
+        return;
+    }
     else
     {
         snprintf(outputBuf, OUTPUT_BUF_SIZE, "FIXME: Unknown protocol: [%s]"
