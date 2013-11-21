@@ -1,6 +1,5 @@
 import javax.swing.JFrame;
 import javax.swing.DefaultListModel;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.JButton;
@@ -141,7 +140,7 @@ public class WSChatApplication extends WebSocketClient implements Runnable {
 			return;
 		} else if (protocol.equals("list")) {
 			String[] namelist = message.split(":");
-			//System.out.println(Arrays.toString(namelist));
+			// System.out.println(Arrays.toString(namelist));
 			listModel.clear();
 			listModel.addElement("[Everyone]");
 			int index = 0;
@@ -166,11 +165,16 @@ public class WSChatApplication extends WebSocketClient implements Runnable {
 			msg_area.append("[Private]"
 					+ message.substring(0, message.indexOf(':')) + ":\n"
 					+ message.substring(message.indexOf(':') + 1) + "\n");
-		} else if (message.startsWith("")) {
-			JOptionPane.showMessageDialog(null, "Empty message\n");
-		}
-		else
-		{
+		} else if (protocol.equals("error")) {
+			msg_area.append("Error: "
+					+ message.substring(message.indexOf(":") + 1));
+		} else if (protocol.equals("to")) {
+			if (message.equals("success"))
+				msg_area.append("[Private message sent successfully]\n");
+			else
+				msg_area.append("[Private message sent failed: " 
+						+ message.substring(message.indexOf(":") + 1) + "]\n");
+		} else {
 			System.err.println("FIXME: Unhandled protocol [" + protocol
 					+ "] with data [" + message + "]");
 		}
