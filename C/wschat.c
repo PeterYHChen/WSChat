@@ -47,6 +47,7 @@ static int callback_chat(struct libwebsocket_context *context,
     struct libwebsocket *wsi, enum libwebsocket_callback_reasons reason,
     void *user, void *in, size_t len);
 void * ws_thread_code(void *p);
+void output(char *out);
 
 /* Per session data for chat */
 #define MAX_CHAT_PAYLOAD 1400
@@ -68,10 +69,11 @@ static struct libwebsocket_protocols protocols[] = {
 
 /* Output shared buffer and reference */
 #define OUTPUT_BUF_SIZE 1024
-static char outputBuf[OUTPUT_BUF_SIZE];
 static CDKSCREEN *cdkscreen      = 0;
 static CDKSWINDOW *commandOutput = 0;
 static CDKENTRY *commandEntry    = 0;
+pthread_mutex_t outputLock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t writeLock = PTHREAD_MUTEX_INITIALIZER;
 
 /* shared context reference */
 static struct libwebsocket_context *context;
@@ -177,7 +179,7 @@ main(int argc, char **argv)
 
         endCDK();
 
-        exit(EXIT_SUCCESS);
+        exit(EXIT_FAILURE);
     }
 
     /* Show them who wrote this and how to get help */
@@ -185,7 +187,7 @@ main(int argc, char **argv)
     eraseCDKEntry(commandEntry);
 
     /* Show welcome */
-    addCDKSwindow(commandOutput, "</B/32>Welcome!", BOTTOM);
+    output("</B/32>Welcome!");
     ready = 1;
 /* COLORs' are great!
    int i;
@@ -243,13 +245,10 @@ main(int argc, char **argv)
             /* Jump to the bottom of the scrolling window */
             jumpToLineCDKSwindow(commandOutput, BOTTOM);
 
-            /* Insert a line providing the command */
-            /* TODO DEBUG */
-            sprintf(outputBuf, "</B>DEBUG Send: </!B>%s", command);
-            addCDKSwindow(commandOutput, outputBuf, BOTTOM);
-
             /* Write send buffer */
+            pthread_mutex_lock(&writeLock);
             snprintf(sendBuf, MAX_CHAT_PAYLOAD, "%s", command);
+            pthread_mutex_unlock(&writeLock);
             needSend = 1;
 
             /* Clean out the entry field */
@@ -274,8 +273,17 @@ main(int argc, char **argv)
             exit(EXIT_SUCCESS);
         }
     }
+
+    /* shouldn't get here unless something happends */
+    return EXIT_FAILURE;
 }
 
+void output(char *out)
+{
+    pthread_mutex_lock(&outputLock);
+    addCDKSwindow(commandOutput, out, BOTTOM);
+    pthread_mutex_unlock(&outputLock);
+}
 
 void *
 ws_thread_code(void *p)
@@ -318,13 +326,13 @@ callback_chat(struct libwebsocket_context *context, struct libwebsocket *wsi,
     {
       /* Event Callback - onopen() */
       case LWS_CALLBACK_CLIENT_ESTABLISHED:
-        addCDKSwindow(commandOutput, "[Client has connected]", BOTTOM);
+        output("[Client has connected]");
         pss->index = 0;
         break;
 
       /* Event Callback - onmessage() */
       case LWS_CALLBACK_CLIENT_RECEIVE:
-        addCDKSwindow(commandOutput, (char *)in, BOTTOM);
+        output((char *)in);
         break;
 
       /* Event Callback - onsend() */
@@ -333,15 +341,16 @@ callback_chat(struct libwebsocket_context *context, struct libwebsocket *wsi,
         if (needSend)
         {
             needSend = 0;
+            pthread_mutex_lock(&writeLock);
             pss->len = sprintf((char *)&pss->buf[LWS_SEND_BUFFER_PRE_PADDING],
                 "%s", sendBuf);
+            pthread_mutex_unlock(&writeLock);
             n = libwebsocket_write(wsi, &pss->buf[LWS_SEND_BUFFER_PRE_PADDING],
                 pss->len, LWS_WRITE_TEXT);
 
             if (n < 0)
             {
-                addCDKSwindow(commandOutput, "[Error when writing to socket, "
-                    "hanging up]", BOTTOM);
+                output("[Error when writing to socket, hanging up]");
                 return 1;
             }
         }
