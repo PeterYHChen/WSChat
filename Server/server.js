@@ -48,9 +48,9 @@ WSChat.doSend = function (conn, dest, message) {
   }
 
   if (found) {
-    conn.sendUTF("pmsg:" + conn.nickName + ":" + message);
+    conn.sendUTF("to:success");
   } else {
-    conn.sendUTF("pmsg:failed:User not exist!");
+    conn.sendUTF("to:failed:User not exist!");
   }
 }
 WSChat.doBroadCast = function (message, includeNotLogin) {
@@ -90,7 +90,7 @@ WSChat.cmdNick = function (conn, nick) {
       } else {
         conn.nickName = nick;
         conn.sendUTF("nick:success");
-        WSChat.doBroadCast("login:" + nick);
+        WSChat.doBroadCast("login:" + nick, true);
       }
     } else {
       conn.sendUTF("nick:fail:Illegal character \""
@@ -170,7 +170,7 @@ WSChat.handleMessage = function (conn, message) {
 }
 WSChat.handleClose = function (conn) {
   if (conn.nickName)
-    WSChat.doBroadCast("logout:" + conn.nickName);
+    WSChat.doBroadCast("logout:" + conn.nickName, true);
   delete WSChat.connections[WSChat.connections.indexOf(conn)];
 }
 
