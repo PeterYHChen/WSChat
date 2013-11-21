@@ -1,0 +1,60 @@
+@charset "UTF-8";
+
+#message-board {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 100px;
+
+	overflow-y: scroll;
+	background-color: #CCC;
+}
+
+#message-board > div {
+	background-color: #EEE;
+	padding: 5px;
+	border: 1px dotted #000;
+	margin-bottom: 10px;
+}
+
+#input {
+	display: inline-block;
+
+	position: fixed;
+	height: 80px;
+	left: 0;
+	right: 100px;
+	bottom: 0px;
+
+	padding: 10px;
+
+	background-color: #EEE;
+}
+
+#submit {
+	display: inline-block;
+
+	position: fixed;
+	height: 80px;
+	width: 80px;
+	right: 0;
+	bottom: 0;
+
+	padding: 10px;
+	background-color: #AAA;
+}
+
+textarea, button {
+	width: 100%;
+	height: 100%;
+}
+
+textarea {
+	border: 1px solid #000;
+}
+
+button {
+	border: 1px solid #FFF;
+	background-color: #DDD;
+}
