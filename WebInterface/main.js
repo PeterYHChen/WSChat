@@ -86,6 +86,7 @@ $(document).ready(function () {
 
 	ws.onopen = function () {
 		output("[Client has connected]");
+		output("Note: Please use \"/nick <Nickname>\" set the nickname first");
 	}
 
 	ws.onerror = function () {
