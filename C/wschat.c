@@ -48,6 +48,7 @@ static int callback_chat(struct libwebsocket_context *context,
     void *user, void *in, size_t len);
 void * ws_thread_code(void *p);
 void output(char *out);
+void parsePayload(char *message);
 
 /* Per session data for chat */
 #define MAX_CHAT_PAYLOAD 1400
@@ -69,6 +70,7 @@ static struct libwebsocket_protocols protocols[] = {
 
 /* Output shared buffer and reference */
 #define OUTPUT_BUF_SIZE 1024
+static char outputBuf[OUTPUT_BUF_SIZE];
 static CDKSCREEN *cdkscreen      = 0;
 static CDKSWINDOW *commandOutput = 0;
 static CDKENTRY *commandEntry    = 0;
@@ -278,7 +280,8 @@ main(int argc, char **argv)
     return EXIT_FAILURE;
 }
 
-void output(char *out)
+void
+output(char *out)
 {
     pthread_mutex_lock(&outputLock);
     addCDKSwindow(commandOutput, out, BOTTOM);
@@ -313,6 +316,59 @@ ws_thread_code(void *p)
     return NULL;
 }
 
+void
+parsePayload(char *payload)
+{
+    char *ps = payload, *protocol = payload, *message;
+
+    /* Parse the payload to protocol and message */
+    while (*ps != ':' && *ps != '\0')
+        ps++;
+
+    /* Unknown or invalid payload */
+    if (*ps == '\0')
+    {
+        snprintf(outputBuf, OUTPUT_BUF_SIZE, "FIXME: Unknown payload: %s",
+            payload);
+        output(outputBuf);
+        return;
+    }
+
+    /* Split payload */
+    *ps++ = '\0';
+    message = ps;
+
+    if (strcmp(protocol, "list") == 0)
+    {
+        /* Check empty list */
+        if (*message == '\0')
+        {
+            output("Nobody is current online");
+            return;
+        }
+
+        /* replace ':' with ',' to construct the name list */
+        while (*ps != '\0')
+        {
+            if (*ps == ':')
+                *ps = ',';
+            ps++;
+        }
+        ps[-1] = '\0'; /* remove last seperator */
+        snprintf(outputBuf, OUTPUT_BUF_SIZE, "Current online list: %s",
+            message);
+        output(outputBuf);
+        return;
+    }
+    else
+    {
+        snprintf(outputBuf, OUTPUT_BUF_SIZE, "FIXME: Unknown protocol: [%s]"
+            " with message [%s]", protocol, message);
+        output(outputBuf);
+        return;
+    }
+}
+
 /* WebSocket chat callback function */
 static int
 callback_chat(struct libwebsocket_context *context, struct libwebsocket *wsi,
@@ -332,7 +388,7 @@ callback_chat(struct libwebsocket_context *context, struct libwebsocket *wsi,
 
       /* Event Callback - onmessage() */
       case LWS_CALLBACK_CLIENT_RECEIVE:
-        output((char *)in);
+        parsePayload((char *)in);
         break;
 
       /* Event Callback - onsend() */
