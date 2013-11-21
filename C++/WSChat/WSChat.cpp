@@ -176,6 +176,17 @@ void WSChat::checkMessage(QString msg)
                 websocket->write(tr("/list"));
                 return;
             }
+            else if (msg.startsWith("to:failed:"))
+            {
+                msg = msg.remove(tr("to:failed:"));
+            }
+            else if (msg.startsWith("to:success"))
+            {
+                //msg = msg.remove(tr("to:success"));
+                msg = msg.remove(tr("to:"));
+            }
+            else if (msg.startsWith(tr("msg:")))
+                msg = msg.remove(tr("msg:"));
             displayMessage(msg.toHtmlEscaped());
         }
     }
