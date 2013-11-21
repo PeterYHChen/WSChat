@@ -3,7 +3,8 @@
 all: wschat
 
 wschat: wschat.c
-	gcc -I/usr/include/cdk -Wall wschat.c -lcdk -lncurses -L/lib -o WSChat
+	gcc -I/usr/include/cdk -g -Wall wschat.c \
+		-lcdk -lncurses -lwebsockets -pthread -L/lib -o WSChat
 
 clean:
 	rm -f *.o WSChat

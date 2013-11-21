@@ -48,9 +48,10 @@ WSChat.doSend = function (conn, dest, message) {
   }
 
   if (found) {
+    conn.sendUTF("to:success");
     conn.sendUTF("pmsg:" + conn.nickName + ":" + message);
   } else {
-    conn.sendUTF("pmsg:failed:User not exist!");
+    conn.sendUTF("to:failed:User not exist!");
   }
 }
 WSChat.doBroadCast = function (message, includeNotLogin) {
@@ -85,20 +86,20 @@ WSChat.cmdNick = function (conn, nick) {
       }
 
       if (alreadyExist) {
-        conn.sendUTF("nick:fail:Nickname \"" + nick + "\" " 
+        conn.sendUTF("nick:failed:Nickname \"" + nick + "\" " 
           + "is already in use!")
       } else {
         conn.nickName = nick;
         conn.sendUTF("nick:success");
-        WSChat.doBroadCast("login:" + nick);
+        WSChat.doBroadCast("login:" + nick, true);
       }
     } else {
-      conn.sendUTF("nick:fail:Illegal character \""
+      conn.sendUTF("nick:failed:Illegal character \""
         + nick.charAt(nick.match(/[^_A-Za-z0-9]/).index)
         + "\" found in nickname \"" + nick + "\"!");
     }
   } else
-    conn.sendUTF("nick:fail:Empty nickname!");
+    conn.sendUTF("nick:failed:Empty nickname!");
 }
 WSChat.processCommand = function (conn, cmd, params) {
   switch (cmd.trim()) {
@@ -170,7 +171,7 @@ WSChat.handleMessage = function (conn, message) {
 }
 WSChat.handleClose = function (conn) {
   if (conn.nickName)
-    WSChat.doBroadCast("logout:" + conn.nickName);
+    WSChat.doBroadCast("logout:" + conn.nickName, true);
   delete WSChat.connections[WSChat.connections.indexOf(conn)];
 }
 

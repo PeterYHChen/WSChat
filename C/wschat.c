@@ -1,299 +1,624 @@
 #include <cdk.h>
+#include <libwebsockets.h>
+#include <pthread.h>
 
 #ifdef HAVE_XCURSES
 char *XCursesProgramName="WSChat";
 #endif
 
-/* Define some global variables. */
-#define MAXHISTORY	5000
-static char *introductionMessage[] = {
-   "<C></B/16>  WSChat Command Line Interface  ", "",
-   "<C>Written by Wenxuan Zhao", "",
-   "<C>Credit: CLI code ",
-   "<C>borrowed from Mike Glover", "",
-   "<C>Type </B>/help<!B> to get help."};
+#ifndef WS_ADDRESS
+#define WS_ADDRESS "tunnel.vince.im"
+#endif
 
-/* This structure is used for keeping command history. */
-struct history_st {
-   int count;
-   int current;
-   char *command[MAXHISTORY];
+#ifndef WS_PORT
+#define WS_PORT 8999
+#endif
+
+/* Define some global variables */
+#define MAXHISTORY 5000
+static char *introductionMessage[] = {
+    "<C></B/16>  WSChat Command Line Interface  ", "",
+    "<C>Written by Wenxuan Zhao", "",
+    "<C>Credit: CLI code ",
+    "<C>borrowed from Mike Glover", "",
+    "<C>Type </B>/help<!B> to get help."};
+static char *failInitMessage[] = {
+    "<C></B/16>Error", "",
+    "<C>  Failed to initialize WebSocket!  "
+};
+static char *failWSMessage[] = {
+    "<C></B/16>Error", "",
+    "<C>  WebSocket execution error!  "
 };
 
-/* Define some local prototypes. */
-void help (CDKENTRY *entry);
+/* This structure is used for keeping command history */
+struct history_st {
+    int count;
+    int current;
+    char *command[MAXHISTORY];
+};
+
+/* Define some local prototypes */
+void help(CDKENTRY *entry);
 static BINDFN_PROTO(historyUpCB);
 static BINDFN_PROTO(historyDownCB);
 static BINDFN_PROTO(viewHistoryCB);
+static int callback_chat(struct libwebsocket_context *context,
+    struct libwebsocket *wsi, enum libwebsocket_callback_reasons reason,
+    void *user, void *in, size_t len);
+void *ws_thread_code(void *p);
+void output(char *out);
+char *parseReason(char *failMsg);
+void parsePayload(char *message);
+
+/* Per session data for chat */
+#define MAX_CHAT_PAYLOAD 1400
+struct per_session_data__chat {
+    unsigned char buf[LWS_SEND_BUFFER_PRE_PADDING + MAX_CHAT_PAYLOAD
+        + LWS_SEND_BUFFER_POST_PADDING];
+    unsigned int len;
+    unsigned int index;
+};
+
+/* WebSocket chat protocol handler */
+static struct libwebsocket_protocols protocols[] = {
+    {
+        "default",                            /* name */
+        callback_chat,                        /* callback */
+        sizeof(struct per_session_data__chat) /* per_session_data_size */
+    }, {NULL, NULL, 0}                        /* End of list */
+};
+
+/* Output shared buffer and reference */
+#define OUTPUT_BUF_SIZE 1024
+static char outputBuf[OUTPUT_BUF_SIZE];
+static CDKSCREEN *cdkscreen      = 0;
+static CDKSWINDOW *commandOutput = 0;
+static CDKENTRY *commandEntry    = 0;
+pthread_mutex_t outputLock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t writeLock = PTHREAD_MUTEX_INITIALIZER;
+
+/* shared context reference */
+static struct libwebsocket_context *context;
+
+/* shared thread reference */
+static pthread_t ws_thread;
+static char sendBuf[MAX_CHAT_PAYLOAD];
+
+/* shared flag */
+static int force_exit = 0;
+static int ready = 0;
+static int needSend = 0;
 
 /*
- * Written by:	Mike Glover, Wenxuan Zhao
+ * Written by:        Mike Glover, Wenxuan Zhao
  * Purpose:
- *		This creates a very simple command interface for WSChat.
+ *                    This creates a very simple command interface for WSChat.
  */
-int main(int argc, char **argv)
+int
+main(int argc, char **argv)
 {
-   /* Declare variables. */
-   CDKSCREEN *cdkscreen		= 0;
-   CDKSWINDOW *commandOutput	= 0;
-   CDKENTRY *commandEntry	= 0;
-   WINDOW *cursesWin		= 0;
-   chtype *convert		= 0;
-   char *command		= 0;
-   char *upper			= 0;
-   char *prompt			= "</B/24>>";
-   char *title			= "<C></B/5>WSChat Message Board";
-   int promptLen		= 0;
-   int commandFieldWidth	= 0;
-   struct history_st history;
-   char temp[600];
-   int ret, junk;
+    /* Declare variables for GUI */
+    WINDOW *cursesWin            = 0;
+    chtype *convert              = 0;
+    char *command                = 0;
+    char *prompt                 = "</B/24>>";
+    char *title                  = "<C></B/5>WSChat Message Board";
+    int promptLen                = 0;
+    int commandFieldWidth        = 0;
+    struct history_st history;
+    int junk;
 
-   /* Set up the history. */
-   history.current = 0;
-   history.count = 0;
+    /* Declare variables for WebSocket */
+    struct lws_context_creation_info info;
+    struct libwebsocket *wsi;
 
-   /* Check the command line for options. */
-   while (1)
-   {
-      /* Are there any more command line options to parse. */
-      if ((ret = getopt (argc, argv, "t:p:")) == -1)
-      {
-	 break;
-      }
-      switch (ret)
-      {
-	 case 'p':
-	      prompt = copyChar (optarg);
-	      break;
+    /* Disable libwebsocket output to console (which mess up the GUI) */
+    lws_set_log_level(0, NULL);
 
-	 case 't':
-	      title = copyChar (optarg);
-	      break;
+    /* Initialize the WebSocket */
+    memset(&info, 0, sizeof info);
 
-	 default:
-	      break;
-      }
-   }
+    info.port                    = CONTEXT_PORT_NO_LISTEN;
+    info.iface                   = NULL;
+    info.protocols               = protocols;
+    info.gid                     = -1;
+    info.uid                     = -1;
+    info.options                 = 0;
 
-   /* Set up CDK. */
-   cursesWin = initscr();
-   cdkscreen = initCDKScreen (cursesWin);
+    /* Create context and try to connect */
+    context = libwebsocket_create_context(&info);
 
-   /* Start color. */
-   initCDKColor();
+    if (context)
+    {
+        wsi = libwebsocket_client_connect(context, WS_ADDRESS, WS_PORT, 0, "/",
+            WS_ADDRESS, "origin", NULL, -1);
+    }
 
-   /* Create the scrolling window. */
-   commandOutput = newCDKSwindow (cdkscreen, CENTER, TOP, -8, -2,
-					title, 1000, TRUE, FALSE);
+    /* Set up the history */
+    history.current = 0;
+    history.count = 0;
 
-   /* Convert the prompt to a chtype and determine its length. */
-   convert = char2Chtype (prompt, &promptLen, &junk);
-   commandFieldWidth = COLS - promptLen - 4;
-   freeChtype (convert);
+    /* Set up CDK */
+    cursesWin = initscr();
+    cdkscreen = initCDKScreen(cursesWin);
 
-   /* Create the entry field. */
-   commandEntry = newCDKEntry (cdkscreen, CENTER, BOTTOM,
-				0, prompt, A_BOLD|COLOR_PAIR(8), COLOR_PAIR(24)|'_',
-				vMIXED, commandFieldWidth, 1, 512, FALSE, FALSE);
+    /* Start color */
+    initCDKColor();
 
-   /* Create the key bindings. */
-   bindCDKObject (vENTRY, commandEntry, KEY_UP, historyUpCB, &history);
-   bindCDKObject (vENTRY, commandEntry, KEY_DOWN, historyDownCB, &history);
-   bindCDKObject (vENTRY, commandEntry, KEY_TAB, viewHistoryCB, commandOutput);
+    /* Create the scrolling window */
+    commandOutput = newCDKSwindow(cdkscreen, CENTER, TOP, -8, -2,
+        title, 1000, TRUE, FALSE);
 
-   /* Draw the screen. */
-   refreshCDKScreen (cdkscreen);
+    /* Convert the prompt to a chtype and determine its length */
+    convert = char2Chtype(prompt, &promptLen, &junk);
+    commandFieldWidth = COLS - promptLen - 4;
+    freeChtype(convert);
 
-   /* Show them who wrote this and how to get help. */
-   popupLabel (cdkscreen, introductionMessage, 8);
-   eraseCDKEntry (commandEntry);
+    /* Create the entry field */
+    commandEntry = newCDKEntry(cdkscreen, CENTER, BOTTOM,
+        0, prompt, A_BOLD|COLOR_PAIR(8), COLOR_PAIR(24)|'_',
+        vMIXED, commandFieldWidth, 1, 512, FALSE, FALSE);
 
-   /* Show welcome */
-   addCDKSwindow (commandOutput, "</B/32>Welcome!", BOTTOM);
+    /* Create the key bindings */
+    bindCDKObject(vENTRY, commandEntry, KEY_UP, historyUpCB, &history);
+    bindCDKObject(vENTRY, commandEntry, KEY_DOWN, historyDownCB, &history);
+    bindCDKObject(vENTRY, commandEntry, KEY_TAB, viewHistoryCB, commandOutput);
+
+    /* Draw the screen */
+    refreshCDKScreen(cdkscreen);
+
+    /* Test WebSocket initialize failure */
+    if (context == NULL || wsi == NULL
+        || pthread_create(&ws_thread, NULL, ws_thread_code, NULL))
+    {
+        popupLabel(cdkscreen, failInitMessage, 3);
+        while (history.count-- > 0)
+            free(history.command[history.count]);
+
+        destroyCDKEntry(commandEntry);
+        destroyCDKSwindow(commandOutput);
+        destroyCDKScreen(cdkscreen);
+
+        endCDK();
+
+        exit(EXIT_FAILURE);
+    }
+
+    /* Show them who wrote this and how to get help */
+    popupLabel(cdkscreen, introductionMessage, 8);
+    eraseCDKEntry(commandEntry);
+
+    /* Show welcome */
+    output("</B/32>Welcome!");
+    ready = 1;
 /* COLORs' are great!
    int i;
    for (i = 0; i <= 64; i++)
    {
-      sprintf (temp, "%d: </B/%d>Welcome!", i, i);
-      addCDKSwindow (commandOutput, temp, BOTTOM);
+      sprintf(temp, "%d: </B/%d>Welcome!", i, i);
+      addCDKSwindow(commandOutput, temp, BOTTOM);
    }
 */
 
-   /* Do this forever. */
-   for (;;)
-   {
-      /* Get the command. */
-      drawCDKEntry (commandEntry, ObjOf(commandEntry)->box);
-      command	= activateCDKEntry (commandEntry, 0);
+    /* Event loop - do this forever until exit */
+    for (;;)
+    {
+        /* Get the command */
+        drawCDKEntry(commandEntry, ObjOf(commandEntry)->box);
+        command = activateCDKEntry(commandEntry, 0);
 
-      /* Check the output of the command. */
-      if (strcmp (command, "/quit") == 0 ||
-		strcmp (command, "/exit") == 0 ||
-		commandEntry->exitType == vESCAPE_HIT)
-      {
-	 /* All done. */
-	 freeChar (upper);
+        /* Check the output of the command */
+        if (strcmp(command, "/quit") == 0 ||
+            strcmp(command, "/exit") == 0 ||
+            commandEntry->exitType == vESCAPE_HIT)
+        {
+            force_exit = 1;
+        }
+        else if (strcmp(command, "/clear") == 0)
+        {
+            /* Keep the history */
+            history.command[history.count] = copyChar(command);
+            history.count++;
+            history.current = history.count;
+            cleanCDKSwindow(commandOutput);
+            cleanCDKEntry(commandEntry);
+        }
+        else if (strcmp(command, "/help") == 0)
+        {
+            /* Keep the history */
+            history.command[history.count] = copyChar(command);
+            history.count++;
+            history.current = history.count;
 
-	 while (history.count-- > 0)
-	    free (history.command[history.count]);
+            /* Display the help */
+            help(commandEntry);
 
-	 destroyCDKEntry (commandEntry);
-	 destroyCDKSwindow (commandOutput);
-	 destroyCDKScreen (cdkscreen);
+            /* Clean the entry field */
+            cleanCDKEntry(commandEntry);
+            eraseCDKEntry(commandEntry);
+        }
+        else
+        {
+            /* Keep the history */
+            history.command[history.count] = copyChar(command);
+            history.count++;
+            history.current = history.count;
 
-	 endCDK();
+            /* Jump to the bottom of the scrolling window */
+            jumpToLineCDKSwindow(commandOutput, BOTTOM);
 
-	 exit(EXIT_SUCCESS);
-      }
-      else if (strcmp (command, "/clear") == 0)
-      {
-	 /* Keep the history. */
-	 history.command[history.count] = copyChar (command);
-	 history.count++;
-	 history.current = history.count;
-	 cleanCDKSwindow (commandOutput);
-	 cleanCDKEntry (commandEntry);
-      }
-      else if (strcmp (command, "/help") == 0)
-      {
-	 /* Keep the history. */
-	 history.command[history.count] = copyChar (command);
-	 history.count++;
-	 history.current = history.count;
+            /* Write send buffer */
+            pthread_mutex_lock(&writeLock);
+            snprintf(sendBuf, MAX_CHAT_PAYLOAD, "%s", command);
+            pthread_mutex_unlock(&writeLock);
+            needSend = 1;
 
-	 /* Display the help. */
-	 help (commandEntry);
+            /* Clean out the entry field */
+            cleanCDKEntry(commandEntry);
+        }
 
-	 /* Clean the entry field. */
-	 cleanCDKEntry (commandEntry);
-	 eraseCDKEntry (commandEntry);
-      }
-      else
-      {
-	 /* Keep the history. */
-	 history.command[history.count] = copyChar (command);
-	 history.count++;
-	 history.current = history.count;
+        /* Clean up before exit */
+        if (force_exit)
+        {
+            while (history.count-- > 0)
+                free(history.command[history.count]);
 
-	 /* Jump to the bottom of the scrolling window. */
-	 jumpToLineCDKSwindow (commandOutput, BOTTOM);
+            pthread_join(ws_thread, NULL);
+            libwebsocket_context_destroy(context);
 
-	 /* Insert a line providing the command. */
-	 sprintf (temp, "</B>DEBUG Send: </!B>%s", command); /* TODO DEBUG */
-	 addCDKSwindow (commandOutput, temp, BOTTOM);
+            destroyCDKEntry(commandEntry);
+            destroyCDKSwindow(commandOutput);
+            destroyCDKScreen(cdkscreen);
 
-/* TODO send */
+            endCDK();
 
-	 /* Clean out the entry field. */
-	 cleanCDKEntry (commandEntry);
-      }
+            exit(EXIT_SUCCESS);
+        }
+    }
 
-      /* Clean up a little. */
-      freeChar (upper);
-   }
+    /* shouldn't get here unless something happends */
+    return EXIT_FAILURE;
+}
+
+void
+output(char *out)
+{
+    pthread_mutex_lock(&outputLock);
+    addCDKSwindow(commandOutput, out, BOTTOM);
+    pthread_mutex_unlock(&outputLock);
+}
+
+void *
+ws_thread_code(void *p)
+{
+    int ret;
+
+    while (!force_exit)
+    {
+        /* Pause the service if not ready */
+        while (!ready)
+            usleep(1000);
+
+        /* Write if needed */
+        libwebsocket_callback_on_writable_all_protocol(&protocols[0]);
+
+        /* Execute libwebsocket service */
+        ret = libwebsocket_service(context, 10);
+
+        /* Test libwebsocket execution failure */
+        if (ret < 0)
+        {
+            popupLabel(cdkscreen, failWSMessage, 3);
+            force_exit = 1;
+        }
+    }
+
+    return NULL;
+}
+
+char *
+parseReason(char *failMsg)
+{
+    char *ps = failMsg;
+    while (*ps != ':' && *ps != '\0')
+        ps++;
+
+    /* return original message if fail not found */
+    if (*ps == '\0')
+        return failMsg;
+    else
+    {
+        *ps = '\0';
+        if (strcmp(failMsg, "failed") == 0)
+            return ++ps;
+        else
+        {
+            /* back trace */
+            *ps = ':';
+            return failMsg;
+        }
+    }
+}
+
+void
+parsePayload(char *payload)
+{
+    char *ps = payload, *protocol = payload, *message;
+
+    /* Parse the payload to protocol and message */
+    while (*ps != ':' && *ps != '\0')
+        ps++;
+
+    /* Unknown or invalid payload */
+    if (*ps == '\0')
+    {
+        snprintf(outputBuf, OUTPUT_BUF_SIZE, "FIXME: Unknown payload: %s",
+            payload);
+        output(outputBuf);
+        return;
+    }
+
+    /* Split payload */
+    *ps++ = '\0';
+    message = ps;
+
+    if (strcmp(protocol, "list") == 0)
+    {
+        /* Check empty list */
+        if (*message == '\0')
+        {
+            output("Nobody is current online");
+            return;
+        }
+
+        /* replace ':' with ',' to construct the name list */
+        while (*ps != '\0')
+        {
+            if (*ps == ':')
+                *ps = ',';
+            ps++;
+        }
+        ps[-1] = '\0'; /* remove last seperator */
+        snprintf(outputBuf, OUTPUT_BUF_SIZE, "Current online list: %s",
+            message);
+        output(outputBuf);
+        return;
+    }
+    else if (strcmp(protocol, "nick") == 0)
+    {
+        if (strcmp(message, "success") == 0)
+        {
+            output("Set nickname successfully!");
+            return;
+        }
+        else
+        {
+            message = parseReason(message);
+            snprintf(outputBuf, OUTPUT_BUF_SIZE,
+                "Set nick name failed: %s", message);
+            output(outputBuf);
+            return;
+        }
+    }
+    else if (strcmp(protocol, "msg") == 0 || strcmp(protocol, "pmsg") == 0)
+    {
+        /* Parse sender's nickname */
+        while (*ps != '\0')
+        {
+            if (*ps == ':')
+            {
+                *ps++ = '\0';
+                 break;
+            }
+
+            ps++;
+        }
+
+        /* Test if the message is private */
+        if (*protocol == 'p')
+            snprintf(outputBuf, OUTPUT_BUF_SIZE, "[Private] %s: %s",
+                message, ps);
+        else
+            snprintf(outputBuf, OUTPUT_BUF_SIZE, "%s: %s",
+                message, ps);
+        output(outputBuf);
+        return;
+    }
+    else if (strcmp(protocol, "to") == 0)
+    {
+        if (strcmp(message, "success") == 0)
+        {
+            output("Private message sent successfully!");
+            return;
+        }
+        else
+        {
+            message = parseReason(message);
+            snprintf(outputBuf, OUTPUT_BUF_SIZE,
+                "Private message sent failed: %s", message);
+            output(outputBuf);
+            return;
+        }
+    }
+    else if (strcmp(protocol, "login") == 0 || strcmp(protocol, "logout") == 0)
+    {
+        snprintf(outputBuf, OUTPUT_BUF_SIZE, "%s just %s", message,
+            protocol[3] == 'i' ? "logged in" : "logged out");
+        output(outputBuf);
+        return;
+    }
+    else if (strcmp(protocol, "error") == 0)
+    {
+        snprintf(outputBuf, OUTPUT_BUF_SIZE, "Error: %s", message);
+        output(outputBuf);
+        return;
+    }
+    else
+    {
+        snprintf(outputBuf, OUTPUT_BUF_SIZE, "FIXME: Unknown protocol: [%s]"
+            " with message [%s]", protocol, message);
+        output(outputBuf);
+        return;
+    }
+}
+
+/* WebSocket chat callback function */
+static int
+callback_chat(struct libwebsocket_context *context, struct libwebsocket *wsi,
+    enum libwebsocket_callback_reasons reason,
+    void *user, void *in, size_t len)
+{
+    struct per_session_data__chat *pss = (struct per_session_data__chat *)user;
+    int n;
+
+    switch (reason)
+    {
+      /* Event Callback - onopen() */
+      case LWS_CALLBACK_CLIENT_ESTABLISHED:
+        output("[Client has connected]");
+        pss->index = 0;
+        break;
+
+      /* Event Callback - onmessage() */
+      case LWS_CALLBACK_CLIENT_RECEIVE:
+        parsePayload((char *)in);
+        break;
+
+      /* Event Callback - onsend() */
+      case LWS_CALLBACK_CLIENT_WRITEABLE:
+        /* we will send our packet... if needed */
+        if (needSend)
+        {
+            needSend = 0;
+            pthread_mutex_lock(&writeLock);
+            pss->len = sprintf((char *)&pss->buf[LWS_SEND_BUFFER_PRE_PADDING],
+                "%s", sendBuf);
+            pthread_mutex_unlock(&writeLock);
+            n = libwebsocket_write(wsi, &pss->buf[LWS_SEND_BUFFER_PRE_PADDING],
+                pss->len, LWS_WRITE_TEXT);
+
+            if (n < 0)
+            {
+                output("[Error when writing to socket, hanging up]");
+                return 1;
+            }
+        }
+        break;
+      default:
+        break;
+    }
+
+    return 0;
 }
 
 /*
  * This is the callback for the down arrow.
  */
-static int historyUpCB (EObjectType cdktype GCC_UNUSED, void *object, void *clientData, chtype key GCC_UNUSED)
+static int
+historyUpCB(EObjectType cdktype GCC_UNUSED, void *object, void *clientData,
+    chtype key GCC_UNUSED)
 {
-   CDKENTRY *entry = (CDKENTRY *)object;
-   struct history_st *history = (struct history_st *) clientData;
+    CDKENTRY *entry              = (CDKENTRY *)object;
+    struct history_st *history   = (struct history_st *) clientData;
 
-   /* Make sure we don't go out of bounds. */
-   if (history->current == 0)
-   {
-      Beep();
-      return (FALSE);
-   }
+    /* Make sure we don't go out of bounds. */
+    if (history->current == 0)
+    {
+        Beep();
+        return (FALSE);
+    }
 
-   /* Decrement the counter. */
-   history->current--;
+    /* Decrement the counter. */
+    history->current--;
 
-   /* Display the command. */
-   setCDKEntryValue (entry, history->command[history->current]);
-   drawCDKEntry (entry, ObjOf(entry)->box);
-   return (FALSE);
+    /* Display the command. */
+    setCDKEntryValue(entry, history->command[history->current]);
+    drawCDKEntry(entry, ObjOf(entry)->box);
+    return (FALSE);
 }
 
 /*
  * This is the callback for the down arrow.
  */
-static int historyDownCB (EObjectType cdktype GCC_UNUSED, void *object, void *clientData, chtype key GCC_UNUSED)
+static int
+historyDownCB(EObjectType cdktype GCC_UNUSED, void *object, void *clientData,
+    chtype key GCC_UNUSED)
 {
-   CDKENTRY *entry = (CDKENTRY *)object;
-   struct history_st *history = (struct history_st *) clientData;
+    CDKENTRY *entry              = (CDKENTRY *)object;
+    struct history_st *history   = (struct history_st *) clientData;
 
-   /* Make sure we don't go out of bounds. */
-   if (history->current == history->count)
-   {
-      Beep();
-      return (FALSE);
-   }
+    /* Make sure we don't go out of bounds. */
+    if (history->current == history->count)
+    {
+        Beep();
+        return (FALSE);
+    }
 
-   /* Increment the counter... */
-   history->current++;
+    /* Increment the counter... */
+    history->current++;
 
-   /* If we are at the end, clear the entry field. */
-   if (history->current == history->count)
-   {
-      cleanCDKEntry (entry);
-      drawCDKEntry (entry, ObjOf(entry)->box);
-      return (FALSE);
-   }
+    /* If we are at the end, clear the entry field. */
+    if (history->current == history->count)
+    {
+        cleanCDKEntry(entry);
+        drawCDKEntry(entry, ObjOf(entry)->box);
+        return (FALSE);
+    }
 
-   /* Display the command. */
-   setCDKEntryValue (entry, history->command[history->current]);
-   drawCDKEntry (entry, ObjOf(entry)->box);
-   return (FALSE);
+    /* Display the command. */
+    setCDKEntryValue(entry, history->command[history->current]);
+    drawCDKEntry(entry, ObjOf(entry)->box);
+    return (FALSE);
 }
 
 /*
  * This callback allows the user to play with the scrolling window.
  */
-static int viewHistoryCB (EObjectType cdktype GCC_UNUSED, void *object, void *clientData, chtype key GCC_UNUSED)
+static int
+viewHistoryCB(EObjectType cdktype GCC_UNUSED, void *object, void *clientData,
+    chtype key GCC_UNUSED)
 {
-   CDKSWINDOW *swindow	= (CDKSWINDOW *)clientData;
-   CDKENTRY *entry	= (CDKENTRY *)object;
+    CDKSWINDOW *swindow          = (CDKSWINDOW *)clientData;
+    CDKENTRY *entry              = (CDKENTRY *)object;
 
-   /* Let them play... */
-   activateCDKSwindow (swindow, 0);
+    /* Let them play... */
+    activateCDKSwindow(swindow, 0);
 
-   /* Redraw the entry field. */
-   drawCDKEntry (entry, ObjOf(entry)->box);
-   return (FALSE);
+    /* Redraw the entry field. */
+    drawCDKEntry(entry, ObjOf(entry)->box);
+    return (FALSE);
 }
 
 /*
  * This function displays help.
  */
-void help (CDKENTRY *entry)
+void
+help(CDKENTRY *entry)
 {
-   char *mesg[25];
+    char *mesg[25];
 
-   /* Create the help message. */
-   mesg[0] = "<C></B/29>Help";
-   mesg[1] = "";
-   mesg[2] = "</B/24>When in the message inputfield";
-   mesg[3] = "</24>   Key:";
-   mesg[4] = "<B=Up Arrow  > Scrolls back one message.";
-   mesg[5] = "<B=Down Arrow> Scrolls forward one message.";
-   mesg[6] = "<B=Tab       > Activates the scrolling window.";
-   mesg[7] = "</24>   Command:";
-   mesg[8] = "<B=/help     > Displays this help window.";
-   mesg[9] = "";
-   mesg[10] = "</B/24>When in the scrolling window";
-   mesg[11] = "</24>   Key:";
-   mesg[12] = "<B=l or L    > Loads a file into the window.";
-   mesg[13] = "<B=s or S    > Saves the contents of the window to a file.";
-   mesg[14] = "<B=Up Arrow  > Scrolls up one line.";
-   mesg[15] = "<B=Down Arrow> Scrolls down one line.";
-   mesg[16] = "<B=Page Up   > Scrolls back one page.";
-   mesg[17] = "<B=Page Down > Scrolls forward one page.";
-   mesg[18] = "<B=Tab/Escape> Returns to the command line.";
-   mesg[19] = "";
-   mesg[20] = "<C> </B/24>Have fun! ;-)<!B!24>";
-   popupLabel (ScreenOf(entry), mesg, 21);
+    /* Create the help message. */
+    mesg[0]  = "<C></B/29>Help";
+    mesg[1]  = "";
+    mesg[2]  = "</B/24>When in the message inputfield";
+    mesg[3]  = "</24>   Key:";
+    mesg[4]  = "<B=Up Arrow  > Scrolls back one message.";
+    mesg[5]  = "<B=Down Arrow> Scrolls forward one message.";
+    mesg[6]  = "<B=Tab       > Activates the scrolling window.";
+    mesg[7]  = "</24>   Command:";
+    mesg[8]  = "<B=/help     > Displays this help window.";
+    mesg[9]  = "";
+    mesg[10] = "</B/24>When in the scrolling window";
+    mesg[11] = "</24>   Key:";
+    mesg[12] = "<B=l or L    > Loads a file into the window.";
+    mesg[13] = "<B=s or S    > Saves the contents of the window to a file.";
+    mesg[14] = "<B=Up Arrow  > Scrolls up one line.";
+    mesg[15] = "<B=Down Arrow> Scrolls down one line.";
+    mesg[16] = "<B=Page Up   > Scrolls back one page.";
+    mesg[17] = "<B=Page Down > Scrolls forward one page.";
+    mesg[18] = "<B=Tab/Escape> Returns to the command line.";
+    mesg[19] = "";
+    mesg[20] = "<C> </B/24>Have fun! ;-)<!B!24>";
+    popupLabel(ScreenOf(entry), mesg, 21);
 }
