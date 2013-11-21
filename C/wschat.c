@@ -401,9 +401,9 @@ parsePayload(char *payload)
             return;
         }
     }
-    else if (strcmp(protocol, "msg") == 0)
+    else if (strcmp(protocol, "msg") == 0 || strcmp(protocol, "pmsg") == 0)
     {
-        /* parse sender's nickname */
+        /* Parse sender's nickname */
         while (*ps != '\0')
         {
             if (*ps == ':')
@@ -414,8 +414,14 @@ parsePayload(char *payload)
 
             ps++;
         }
-        snprintf(outputBuf, OUTPUT_BUF_SIZE, "%s: %s",
-            message, ps);
+
+        /* Test if the message is private */
+        if (*protocol == 'p')
+            snprintf(outputBuf, OUTPUT_BUF_SIZE, "[Private] %s: %s",
+                message, ps);
+        else
+            snprintf(outputBuf, OUTPUT_BUF_SIZE, "%s: %s",
+                message, ps);
         output(outputBuf);
         return;
     }
