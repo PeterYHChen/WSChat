@@ -85,7 +85,7 @@ WSChat.cmdNick = function (conn, nick) {
       }
 
       if (alreadyExist) {
-        conn.sendUTF("nick:fail:Nickname \"" + nick + "\" " 
+        conn.sendUTF("nick:failed:Nickname \"" + nick + "\" " 
           + "is already in use!")
       } else {
         conn.nickName = nick;
@@ -93,12 +93,12 @@ WSChat.cmdNick = function (conn, nick) {
         WSChat.doBroadCast("login:" + nick, true);
       }
     } else {
-      conn.sendUTF("nick:fail:Illegal character \""
+      conn.sendUTF("nick:failed:Illegal character \""
         + nick.charAt(nick.match(/[^_A-Za-z0-9]/).index)
         + "\" found in nickname \"" + nick + "\"!");
     }
   } else
-    conn.sendUTF("nick:fail:Empty nickname!");
+    conn.sendUTF("nick:failed:Empty nickname!");
 }
 WSChat.processCommand = function (conn, cmd, params) {
   switch (cmd.trim()) {

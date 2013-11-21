@@ -46,8 +46,9 @@ static BINDFN_PROTO(viewHistoryCB);
 static int callback_chat(struct libwebsocket_context *context,
     struct libwebsocket *wsi, enum libwebsocket_callback_reasons reason,
     void *user, void *in, size_t len);
-void * ws_thread_code(void *p);
+void *ws_thread_code(void *p);
 void output(char *out);
+char *parseReason(char *failMsg);
 void parsePayload(char *message);
 
 /* Per session data for chat */
@@ -316,6 +317,30 @@ ws_thread_code(void *p)
     return NULL;
 }
 
+char *
+parseReason(char *failMsg)
+{
+    char *ps = failMsg;
+    while (*ps != ':' && *ps != '\0')
+        ps++;
+
+    /* return original message if fail not found */
+    if (*ps == '\0')
+        return failMsg;
+    else
+    {
+        *ps = '\0';
+        if (strcmp(failMsg, "failed") == 0)
+            return ++ps;
+        else
+        {
+            /* back trace */
+            *ps = ':';
+            return failMsg;
+        }
+    }
+}
+
 void
 parsePayload(char *payload)
 {
@@ -359,6 +384,22 @@ parsePayload(char *payload)
             message);
         output(outputBuf);
         return;
+    }
+    else if (strcmp(protocol, "nick") == 0)
+    {
+        if (strcmp(message, "success") == 0)
+        {
+            output("Set nickname successfully!");
+            return;
+        }
+        else
+        {
+            message = parseReason(message);
+            snprintf(outputBuf, OUTPUT_BUF_SIZE, "Set nick name failed: %s",
+                message);
+            output(outputBuf);
+            return;
+        }
     }
     else
     {
