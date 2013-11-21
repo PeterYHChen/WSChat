@@ -49,6 +49,7 @@ WSChat.doSend = function (conn, dest, message) {
 
   if (found) {
     conn.sendUTF("to:success");
+    conn.sendUTF("pmsg:" + conn.nickName + ":" + message);
   } else {
     conn.sendUTF("to:failed:User not exist!");
   }

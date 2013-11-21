@@ -50,10 +50,29 @@ $(document).ready(function () {
 				var pos = message.indexOf(":");
 				if (pos == -1)
 					return;
-				output((protocol == "pmsg" ? "[Private] " : "") + message.substring(0, pos) + ": "
+				output((protocol == "pmsg" ? "[Private] " : "")
+					+ message.substring(0, pos) + ": "
 					+ message.substring(pos + 1));
 				return;
 				
+			case "to":
+				if (message == "success") {
+					output("Private message sent successfully!");
+				} else {
+					output("Private message sent failed: "
+						+ parseReason(message));
+				}
+				return;
+
+			case "login":
+			case "logout":
+				output(message + " just "
+					+ (protocol == "login" ? "logged in" : "logged out"));
+				return;
+
+			case "error":
+				output("Error: [" + message + "]");
+				return;
 
 			default:
 				output("FIXME: Unknown protocol: [" + protocol + "] " 
@@ -83,5 +102,6 @@ $(document).ready(function () {
 });
 
 $("[name=submit]").click(function (argument) {
-	// body...
+	ws.send($("[name=input]").val());
+	$("[name=input]").val("");
 });

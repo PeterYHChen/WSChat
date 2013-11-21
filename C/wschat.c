@@ -441,16 +441,16 @@ parsePayload(char *payload)
             return;
         }
     }
-    else if (strcmp(protocol, "error") == 0)
-    {
-        snprintf(outputBuf, OUTPUT_BUF_SIZE, "Error: %s", message);
-        output(outputBuf);
-        return;
-    }
     else if (strcmp(protocol, "login") == 0 || strcmp(protocol, "logout") == 0)
     {
         snprintf(outputBuf, OUTPUT_BUF_SIZE, "%s just %s", message,
             protocol[3] == 'i' ? "logged in" : "logged out");
+        output(outputBuf);
+        return;
+    }
+    else if (strcmp(protocol, "error") == 0)
+    {
+        snprintf(outputBuf, OUTPUT_BUF_SIZE, "Error: %s", message);
         output(outputBuf);
         return;
     }
