@@ -395,8 +395,8 @@ parsePayload(char *payload)
         else
         {
             message = parseReason(message);
-            snprintf(outputBuf, OUTPUT_BUF_SIZE, "Set nick name failed: %s",
-                message);
+            snprintf(outputBuf, OUTPUT_BUF_SIZE,
+                "Set nick name failed: %s", message);
             output(outputBuf);
             return;
         }
@@ -418,6 +418,22 @@ parsePayload(char *payload)
             message, ps);
         output(outputBuf);
         return;
+    }
+    else if (strcmp(protocol, "to") == 0)
+    {
+        if (strcmp(message, "success") == 0)
+        {
+            output("Private message sent successfully!");
+            return;
+        }
+        else
+        {
+            message = parseReason(message);
+            snprintf(outputBuf, OUTPUT_BUF_SIZE,
+                "Private message sent failed: %s", message);
+            output(outputBuf);
+            return;
+        }
     }
     else
     {
